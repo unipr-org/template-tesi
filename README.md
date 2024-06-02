@@ -8,7 +8,7 @@ Questa repository contiene un template per la stesura della tesi in LaTeX. Il te
 - Stili predefiniti: offre stili preimpostati per algoritmi, blocchi di codice, figure, tabelle e altri elementi comuni della tesi.
 
 ## Come Iniziare
-1. Clona o scarica la repository:
+1. Clona o scarica la repository dalla sezione _Releases_:
 ```bash
 git clone https://github.com/unipr-org/template-tesi.git
 ```
