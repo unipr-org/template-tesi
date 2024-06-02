@@ -1,0 +1,121 @@
+\documentclass{theme/uniprthesis}
+
+%%%%%%%%%%%Some Extra Packages%%%%%%%%%%%
+\usepackage[italian]{babel}		% To have Italina names in Sections, Figures, Chapters etc.
+\usepackage{todonotes}			% To ease the revision
+\usepackage{blindtext} 			
+\usepackage{ifdraft}
+\usepackage{afterpage}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsfonts}
+\usepackage{bbold}
+\usepackage{lipsum} 
+\usepackage{footmisc}
+\usepackage{xcolor}
+
+%%%%% THESIS / TITLE PAGE INFORMATION
+% Everybody needs to complete the following:
+\title{Titolo della tesi}
+\author{Mario Rossi}
+\advisor{Giuseppe Verdi}
+\college{Dipartimento di Scienze Matematiche, Fisiche e Informatiche}
+\degree{Corso di Laurea Triennale/Magistrale in Informatica}
+\degreeyears{20xx--20xx}
+\serialNumber{0123456}
+
+% Not mandatory fields
+% \newcommand{\subTitle}{Titolo in Inglese} %Subtitle, usually the english version of the title
+
+%\newcommand{\advisorSecond}{Prof. Nome2 Cognome2} % For multiple (up to 4) advisors -- if this is not present then also the remaining ones are automatically omitted
+%\newcommand{\advisorThird}{Dott. Nome3 Cognome3} % For multiple (up to 4) advisors -- if this is not present then also the remaining ones are automatically omitted
+%\newcommand{\advisorFourth}{Dott. Nome4 Cognome4} % For multiple (up to 4) advisors
+
+\newcommand{\coadvisor}{} %For multiple (up to 4) coadvisors -- if this is not present then also the remaining ones are automatically omitted
+%\newcommand{\coadvisorSecond}{Prof. co-Nome2 co-Cognome2} % For multiple (up to 4) coadvisors -- if this is not present then also the remaining ones are automatically omitted
+%\newcommand{\coadvisorThird}{Dott. co-Nome3 co-Cognome3} % For multiple (up to 4) coadvisors -- if this is not present then also the remaining ones are automatically omitted
+%\newcommand{\coadvisorFourth}{Dott. co-Nome4 co-Cognome4} % For multiple (up to 4) coadvisors
+
+
+\newcommand\blankpage{
+    \null
+    \thispagestyle{empty}
+    \addtocounter{page}{-1}
+    \newpage
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{document}
+
+\maketitle
+\blankpage % Pagina vuota
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Citazione
+%%%% Commentare questo blocco se non la si vuole mettere
+\newpage
+\thispagestyle{empty}
+\null\vspace{\stretch{1}}
+\begin{flushright}
+	\textit{Citazione}
+\end{flushright}
+\vspace{\stretch{3}}\null
+\newpage
+\blankpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Fine Citazione
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Dedica
+%%%% Commentare questo blocco se non la si vuole mettere
+\newpage
+\thispagestyle{empty}
+\null\vspace{\stretch{1}}
+\begin{flushright}
+	\textit{Dedica}
+\end{flushright}
+\vspace{\stretch{3}}\null
+\newpage
+\blankpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Fine Dedica
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Indici
+\pagestyle{plain}
+\pagenumbering{roman}
+\tableofcontents
+
+\listoffigures    % Commentare se non vi sono immagini
+\listofalgorithms % Commentare se non vi sono algoritmi
+\listoftables     % Commentare se non vi sono tabelle
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Prefazione
+\pagenumbering{arabic}
+\include{capitoli/introduzione}
+	
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Contenuto
+\pagestyle{fancy}
+\include{capitoli/formattazione}
+\include{capitoli/background}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Conclusioni
+\pagestyle{plain}
+\include{capitoli/conclusione}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Bibliograﬁa
+\bibliographystyle{plain} % {apalike, plain, IEEEtran, ACM-Reference-Format} -- Scegliere lo stile preferito
+\cleardoublepage
+\addcontentsline{toc}{chapter}{\bibname}
+\bibliography{./bibliografia}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Ringraziamenti
+\include{capitoli/ringraziamenti}
+\newpage
+\thispagestyle{empty}
+\null\vspace{\stretch{1}}
+\vspace{\stretch{3}}\null
+\newpage
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Appendici
+\appendix
+\include{capitoli/appendici/appendice1}
+\blankpage
+
+\end{document}

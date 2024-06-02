@@ -1,0 +1,24 @@
+% !TeX spellcheck = it_IT
+
+\section{Lavori Futuri}
+
+\subsection*{Variazione sui criteri di suddivisione}
+L'algoritmo di ripartizione studiato in questa tesi si prefigge di giungere ad una suddivisione accettabile del dominio per poterlo distribuire sui vari nodi di calcolo. In particolare non si è ricercato un algoritmo ottimale ma uno che permetta, con un overhead relativamente basso, di eseguire una suddivisione accettabile in base al bilanciamento delle partizioni e al numero di comunicazioni tra i vari nodi.\\
+Non essendo infatti ancora implementata una versione distribuita di \textit{sweGPU} non si conoscono i fattori penalizzanti della distribuzione, in particolare non si conosce l'overhead introdotto dalle comunicazioni e quello introdotto da un eventuale sbilanciamento.\\
+Quando verrà implementata una versione per architetture multi-nodo si potranno valutare gli overhead dei diversi fattori e quindi ridefinire l'algoritmo in base ai vari parametri che maggiormente influenzano la suddivisione stessa. Se, per esempio, si noterà che l'overhead introdotto dalle comunicazioni è insignificante rispetto a quello introdotto da uno sbilanciamento si potrebbe pensare di forzare l'algoritmo a suddividere il numero di celle perfettamente tra i vari nodi anche a se questo dovesse introdurre un alto numero di comunicazioni.
+\subsection*{Migliorie all'algoritmo di partizionamento}
+Vi sono poi alcune migliorie da apportare all'algoritmo analizzato nel capitolo \ref{sec:fourth_sudd_dom}. In particolare:
+\begin{itemize}
+	\item Poiché l'ultimo stadio dell'algoritmo, per formare le varie suddivisioni, lavora sull'unione di sotto-domini più piccoli, i vari \textit{tagli} che dividono le varie partizioni possono avere forme abbastanza irregolari. Questa irregolarità può portare ad un numero di comunicazioni leggermente maggiore di quanto ci si aspetti.\\
+	Bisognerebbe quindi implementare una piccola procedura che al termine dell'esecuzione riassegni i blocchi che toccano il \textit{taglio} intelligentemente.
+	
+	\item L'algoritmo è pensato per utilizzare un gran numero di massimi locali come base per descrivere una buona partizione. Anche se nei domini reali, vista la complessità del territorio, i massimi locali sono sempre presenti in un numero abbastanza alto, potrebbe capitare ipoteticamente che questi siano numericamente inferiori al numero di partizioni volute.
+	Bisognerebbe quindi predisporre un caso limite che permetta di gestire questa configurazione.
+	In un caso del genere si potrebbe pensare, ad esempio, di suddividere il dominio in base alla  posizione dei blocchi, visto che un basso numero di massimi locali comporta domini equamente distribuiti.
+\end{itemize}
+
+\subsection*{Le modifiche al modello MPI}
+Come già spiegato precedentemente la versione definitiva del programma \textit{sweGPU} non è stata ancora del tutto sviluppata. Di conseguenza il modello \textit{MPI} dovrà evolversi rispettando le caratteristiche dell'architettura, che si definirà nel corso dello sviluppo della versione distribuita del programma.\\
+Oltre a questa evoluzione il modello \textit{MPI}, dovrà prevedere la possibilità di svolgere comunicazioni considerando anche le possibili multi GPU installate su uno stesso nodo.\\
+Bisognerà inoltre implementare un semplice algoritmo che permetta ai nodi di ricostruire l'ordine delle informazioni ricevute.\\
+Si può pensare ad un semplice ordine nel salvataggio dei dati da inviare. Ad esempio, le informazioni dei bordi dei vari blocchi si possono memorizzare nell'array di dati da inviare, seguendo l'ordine degli identificativi dei blocchi stessi. I dati di uno stesso blocco si possono poi organizzare a seconda della posizione del bordo\footnote{Nord per primo, Est per secondo etc.}.

@@ -1,0 +1,17 @@
+.DS_Store
+*.synctex.gz
+*.log
+*.bbl
+*.blg
+*.aux
+*.log
+*.out
+*.xmpi
+*.cut
+*.out
+*.fls
+*.fdb_latexmk
+*.lof
+*.loa
+*.toc
+*.lot

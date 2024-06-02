@@ -1,0 +1,222 @@
+% !TeX spellcheck = it_IT
+\section{I Grafi e il loro Partizionamento}
+Nel capitolo \ref{sec:first_swe} di questa tesi si è discusso di come le informazioni del territorio, su cui si vuole svolgere la simulazione, siano completamente mappate su strutture dati specifiche del progetto (celle e blocchi).\\
+L'unione dei blocchi (composti a loro volta dalle celle), crea il dominio logico sul quale verranno svolte le operazioni di \emph{partizionamento} spiegate nel capitolo \ref{sec:fourth_sudd_dom}.\\
+Prima di descrivere le operazioni svolte sul dominio è necessario introdurre il concetto di \emph{grafo} e alcune delle operazioni legate ad esso. Il grafo è la struttura di base su cui si basa la rappresentazione del dominio e la relativa suddivisione.
+
+\subsection{Introduzione ai grafi}
+Il \emph{grafo} è una struttura matematica che ha trovato ampio utilizzo nell'ambito dell'informatica.\\
+Concettualmente, un grafo, è formato da \emph{vertici} e da \emph{archi}, che connettono una coppia di vertici tra loro \cite{cormen}.
+\begin{defn}
+Si dice grafo \emph{G} una coppia \emph{(V,E)} dove dove\emph{V(G)} è l'insieme dei \emph{vertici} (o nodi) ed \emph{E(G)} è l'insieme degli \emph{archi} (che può anche essere vuoto).
+\end{defn}
+Un grafo semplice \emph{G} consiste quindi in un insieme finito e non-vuoto \textit{V(G)} di vertici e in un insieme finito \textit{E(G)} di coppie distinte e non ordinate di elementi di\textit{V(G)}.
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.5\textwidth]{immagini/block_on_grid.png}
+	\caption{Un semplice esempio di grafo}
+	\label{fig:simple_graph}
+\end{figure}
+
+\subsubsection{I vari tipi di grafo}\label{subsubsec:graph_type}
+Quando si parla di grafi bisogna però distinguere di quale tipologia si sta trattando.\\
+Esistono infatti vari tipi di grafo ognuno con caratteristiche differenti \cite{graph_theory}. La prima distinzione si ha tra grafi \emph{diretti} e \emph{indiretti}:
+
+\paragraph{Grafi Indiretti}~\\
+Nei grafi indiretti la relazione di adiacenza è simmetrica: l'arco che connette il nodo \textit{u} al nodo \textit{v} è lo stesso che connette il \textit{v} al nodo \textit{u}. Pertanto l'ordine dei vertici nella coppia che compone l'arco non ha importanza (figura \ref{fig:udir_graph}).
+
+\paragraph{Grafi Diretti}~\\
+In un grafo diretto (o orientato) gli elementi di \textit{E(G)} sono coppie \emph{ordinate} e di conseguenza, gli archi sono associati ad una direzione (figura \ref{fig:dir_graph}). Per esempio l'arco dal vertice \textit{u} al nodo \textit{v}, indicato come (u, v), è diverso dall'arco di direzione opposta (v, u).\\~\\
+
+\begin{defn}
+	Si definisce \emph{ciclo} un cammino lungo archi orientati che parte da un vertice ed arriva allo stesso.
+\end{defn}
+
+Un'altra caratterizzazione dei grafi tiene conto della presenza o meno di un ciclo: si distingue tra \textbf{Grafi diretti Ciclici} (figura \ref{fig:dir_graph}) nel caso in cui il ciclo sia presente e \textbf{Grafi diretti Aciclici (DAG)} (figura \ref{fig:dag}) qualora non vi sia.\\
+
+Infine un'ultima caratteristica che possono avere tutti i tipi di grafo sopra elencati, è l'associazione o meno di un valore, detto \emph{peso}, ad ogni arco appartenete al grafo.\\
+Un \textbf{Grafo Pesato} (figura \ref{fig:weighted_graph}) \textit{G} è quindi un grafo dove ogni elemento dell'insieme \textit{E(G)} ha associato un valore numerico. Questa associazione permette di eseguire operazioni sui vari archi tramite il confronto dei pesi, come ad esempio, individuare un cammino minimo tra due vertici.
+
+\begin{figure}[H]
+	\centering
+	\begin{subfigure}{0.3\textwidth}
+		\centering
+		\includegraphics[width=0.8\linewidth]{immagini/block_on_grid.png}
+		\caption{Esempio di grafo indiretto}
+		\label{fig:udir_graph}
+	\end{subfigure}%
+\begin{subfigure}{0.3\textwidth}
+	\centering
+	\includegraphics[width=0.8\linewidth]{immagini/block_on_grid.png}
+	\caption{Esempio di grafo diretto che contiene un ciclo}
+	\label{fig:dir_graph}
+\end{subfigure}%
+	\begin{subfigure}{0.4\textwidth}
+		\centering
+		\includegraphics[width=0.8\linewidth]{immagini/block_on_grid.png}
+		\caption{Esempio di DAG (grafo diretto aciclico)}
+		\label{fig:dag}
+	\end{subfigure}
+	\begin{subfigure}{1.0\textwidth}
+		\centering
+		\begin{subfigure}{0.5\textwidth}
+			\centering
+			\includegraphics[width=0.7\linewidth]{immagini/block_on_grid.png}
+		\end{subfigure}%
+		\begin{subfigure}{0.5\textwidth}
+			\centering
+			\includegraphics[width=0.7\linewidth]{immagini/block_on_grid.png}
+		\end{subfigure}
+		\caption{Due esempi di grafi pesati}
+		\label{fig:weighted_graph}
+	\end{subfigure}
+	\label{fig:graph_flavours}
+	\caption{I diversi tipi di grafo}
+\end{figure}
+
+
+\subsection{La rappresentazione dei grafi}\label{subsec:graph_rappr}
+I grafi sono utilizzati spesso per descrivere entità fisiche all'interno della memoria di un computer. Nel caso di questa tesi viene utilizzato un grafo orientato per descrivere il territorio nel quale si svolge la simulazione.\\
+Esistono due metodi standard per rappresentare un grafo $G = (V, E)$: attraverso una \emph{collezione di liste di adiacenza} e attraverso una \emph{matrice di adiacenza}.
+
+\subsubsection{Rappresentazione con Matrice di adiacenza}
+Per questa rappresentazione si suppone che i vertici del grafo $G = (V, E)$ siano numerati da 1 a $\arrowvert V\arrowvert$ in modo arbitrario. La rappresentazione tramite matrice di adiacenza del grafo consiste in una matrice di dimensioni $\arrowvert V\arrowvert \times \arrowvert V\arrowvert$ in cui vale che l'elemento $m_{ij}$ rispetti la seguente condizione:\\
+\begin{equation*}
+m_{ij} = \begin{cases}
+1 &\text{se ($i,j$) $\in E$}\\
+0 &\text{altrimenti}
+\end{cases}
+\end{equation*}
+La matrice di adiacenza, mostrata in figura \ref{fig:matrix_adj} occupa una quantità di memoria quadratica rispetto al numero di vertici indipendentemente dal numero degli archi del grafo.\\
+La rappresentazione di un grafo pesato tramite matrice di adiacenza, sostituisce il valore 1 che indica presenza dell'arco tra i nodi con il peso dell'arco stesso e utilizza un valore speciale (come 0, $\infty$ o \textit{NIL}) per il caso in cui l'arco non sia presente.\\
+La matrice di adiacenza è consigliata quando il grafo è un \emph{grafo denso}  ovvero $\arrowvert E\arrowvert$ si avvicina a $\arrowvert V\arrowvert ^2$ o quando c'è bisogno di constatare rapidamente se esiste un arco specifico.
+
+\subsubsection{Rappresentazione con Liste di adiacenza}
+La rappresentazione tramite liste di adiacenza di un grafo $G = (V, E)$ consiste in  un array (indicato d'ora in avanti con \textit{Adj}) di $\arrowvert V\arrowvert$ liste, una per ogni vertice. Per ogni nodo quindi si crea una lista che contiene tutti i vertici adiacenti. Un esempio di lista di adiacenza è mostrato in figura \ref{fig:list_adj}.\\
+La memoria richiesta da questa rappresentazione dipende dal tipo di grafo su cui si basa: infatti la somma totale delle lunghezze delle liste è pari a $\arrowvert E\arrowvert$ se il grafo è orientato, e 2$\arrowvert E\arrowvert$ se il grafo non lo è. La rappresentazione in lista di adiacenza conserva comunque, in entrambi i casi, l'interessante proprietà di occupare una quantità di memoria massima $\Theta(E)$.\\
+Questa rappresentazione è consigliata per la maggioranza dei grafi perchè permette di rappresentare in modo compatto i \emph{grafi sparsi}, quelli in cui $\arrowvert E\arrowvert$ è molto più piccolo di $\arrowvert V\arrowvert ^2$. Inoltre, tramite le liste di adiacenza, è possibile associare facilmente ad ogni arco un peso nel caso in cui si voglia rappresentare un grafo pesato.\\
+L'unico svantaggio è rappresentato dall'impossibilità di determinare velocemente la presenza di uno specificato arco, cosa che invece è possibile fare nelle matrici da adiacenza al costo però di un utilizzo maggiore di memoria.
+\begin{figure}[H]
+	\centering
+	\begin{subfigure}{1.0\textwidth}
+		\centering
+		\includegraphics[width=0.3\linewidth]{immagini/block_on_grid.png}
+		\caption{Il grafo da rappresentare}
+	\end{subfigure}
+	\begin{subfigure}{1.0\textwidth}
+		\centering
+		\begin{subfigure}{0.5\textwidth}
+			\centering
+			\includegraphics[width=0.7\linewidth]{immagini/block_on_grid.png}
+			\caption{Rappresentazione tramite matrice di adiacenza}
+			\label{fig:matrix_adj}
+		\end{subfigure}%
+		\begin{subfigure}{0.5\textwidth}
+			\centering
+			\includegraphics[width=0.7\linewidth]{immagini/block_on_grid.png}
+			\caption{Rappresentazione tramite lista di adiacenza}
+			\label{fig:list_adj}
+		\end{subfigure}
+	\end{subfigure}
+	\label{fig:adj_matrix_graph}
+	\caption{Rappresentazione di uno stesso grafo tramite lista e matrice di adiacenza}
+\end{figure}
+
+\subsection{Il Partizionamento}\label{subsec:partitioning}
+Il \textit{Graph-Partitioning} è un processo di pre-computazione fondamentale per la maggior parte delle applicazioni su larga scala che sono implementate da piattaforme di calcolo parallelo. Il problema del partizionamento definito su un grafo \textit{G} sta nel suddividere \textit{G} in componenti più piccole con specifiche proprietà. Per esempio, una partizione a $k$ divide l'insieme dei vertici in \textit{k} componenti più piccole.\\
+Una partizione è considerata buona se il numero di archi che intercorre tra le componenti separate è piccolo.\\
+Costruire \emph{un grafo a partizione uniforme} è un problema di partizionamento che consiste appunto nel dividere il grafo in componenti della stessa grandezza (in termini di nodi o di peso di questi) cercando di minimizzare le comunicazioni tra le varie componenti.
+
+%\subsubsection{La complessità}
+%Tipicamente, il problema di partizionamento uniforme ricade sotto la categoria dei problemi \textit{NP-hard}. Le soluzioni a questi problemi sono spesso ricavate mediante l'utilizzo di algoritmi euristici e di approssimazione. Nonostante ciò, il problema di partizionamento uniforme o bilanciata può essere ricondotto ad un problema \textit{NP-completo}.
+
+\subsection{Alberi di copertura Minimi}\label{subsec:mst_description}
+\begin{defn}
+Dato un grafo $G = (V, E)$ non orientato e connesso, un \emph{albero di copertura} di G è un sottoinsieme $T \subseteq E$ tale che il sottografo S = (V, T) è un albero non orientato connesso ed aciclico.
+\end{defn}
+Si osserva quindi che un albero di copertura è un sottografo di G che contiene tutti i suoi vertici ed è sia aciclico che connesso.\\
+Sia definita una funzione peso $\omega: E \rightarrow \mathbb{R}$; definiamo il costo di un albero di copertura come la somma dei pesi degli archi che lo compongono:
+\begin{equation}
+\omega(T) = \sum_{e \text{ } \in \text{ } T} \omega(e)
+\end{equation}
+\begin{defn}
+	Dato un grafo $G = (V, E)$ non orientato, connesso e pesato sugli archi, un \emph{albero di copertura minimo} di G è un albero di copertura di G di costo minimo. Si abbrevierà il nome in \emph{MST}, dall’inglese Minimum Spanning Tree.
+\end{defn}
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.5\textwidth]{immagini/block_on_grid.png}
+	\caption{Esempio di un albero di copertura minimo (MST)}
+	\label{fig:mst_simple}
+\end{figure}
+
+\subsubsection{Il teorema Fondamentale degli alberi a copertura minimi \cite{cormen}}\label{subsubsec:th_mst}
+\begin{defn}
+Un \emph{taglio} $(S,V\backslash S)$ di un grafo non orientato $G = (V, E)$ è una partizione di $V$.
+\end{defn}
+\begin{defn}
+Un \emph{arco attraversa} il taglio $(S,V\backslash S)$ se uno dei suoi estremi si trova in $S$ e l’altro in $V\backslash S$.
+\end{defn}
+\begin{defn}
+	Un \emph{taglio rispetta} un insieme $A$ di archi se nessun arco di $A$ attraversa il taglio.
+\end{defn}
+\begin{defn}
+	Un arco che attraversa un taglio si dice \emph{leggero} se ha peso pari al minimo tra i pesi di tutti gli archi che attraversano tale taglio.
+\end{defn}
+\begin{defn}
+	Sia $A$ sottoinsieme di un qualche albero di copertura minimo; un arco si dice \emph{sicuro} per $A$ se può essere aggiunto ad $A$ e quest'ultimo continua ad essere sottoinsieme di un albero di copertura minimo.
+\end{defn}
+Siccome le strategie per la ricerca di un albero a connessione minima sono strategie \textit{greedy}, è importante avere un metodo per verificare che gli archi selezionati passo a passo siano \emph{archi validi}. Il teorema di seguito enunciato permette di verificare questa richiesta.
+\begin{thm}(Fondamentale). Sia G = (V, E, $\omega$) un grafo non orientato, connesso e pesato; sia inoltre:
+	\begin{itemize}
+	\item $A \subseteq E$ contenuto in qualche albero di copertura minimo;
+	\item $(S,V\backslash S)$ un taglio che rispetta $A$;
+    \item $(u, v) \in E$ un arco leggero che attraversa il taglio. 
+	\end{itemize}
+Allora $(u, v)$ è sicuro per $A$.
+\end{thm}
+
+\subsubsection{L'algoritmo di Prim}
+Introdotto il teorema fondamentale (paragrafo \ref{subsubsec:th_mst}) si può passare a descrivere velocemente l'\emph{algoritmo di Prim} che è alla base delle operazioni di partizionamento (capitolo \ref{sec:fourth_sudd_dom}) svolte in questa tesi.\\
+L’algoritmo di Prim si basa sul teorema fondamentale degli alberi di copertura minimi (paragrafo \ref{subsubsec:th_mst}). Il costo dell'algoritmo varia a seconda della struttura dati di supporto utilizzata: se realizzato con coda di priorità ha un costo di $O(E\cdot log(V))$ mentre se realizzato tramite \textit{heap di Fibonacci} ha un costo di esecuzione di $O(E+V\cdot log(V))$.\\
+Infatti in questo algoritmo gli archi dell'insieme $A$ (ovvero degli archi già selezionati dall'algoritmo) formano sempre un albero singolo. L’algoritmo parte da un nodo scelto $r \in V$, che sarà la radice dell’albero di copertura, e aggiunge ad $A$ un \textit{arco leggero} che collega $A$ con un \textit{vertice isolato} (che non sia estremo di qualche altro arco in A) ad ogni passo, garantendo così che ogni arco aggiunto sia \textit{sicuro}.\\
+Per gestire l’insieme dei vertici non ancora inclusi nell’albero di copertura, viene utilizzata una struttura dati del tipo \textit{coda a min-priorità} basata sul campo \textit{key}.\\
+Il campo \textit{key} è dato dal peso minimo di un arco che collega un vertice \textit{v} a qualsiasi altro nell'albero; nel caso in cui questo arco non esista nell'insieme $A$, il valore di \textit{key} sarà $\infty$.\\
+Inoltre per ogni nodo viene indicato il predecessore tramite il campo $\pi$. Grazie proprio ai predecessori è possibile ricostruire l'albero finale in $A$.
+\begin{equation}
+	A = \{(v, v.\pi) : v \in (V \backslash \{r\})\}
+\end{equation}
+
+\begin{algorithm}[H]
+	\caption{Prim minimun spanning tree}
+	\label{alg:Prim_Mst}
+	\begin{algorithmic}[1]
+		\Statex
+		\Function{MST-Prim}{grafo G, funzione\_peso $\omega$, nodo\_radice r}\\
+		\State{\textit{Q}: coda di priorita contenente tutti i vertici in \textit{V}}
+		\For{ogni \textit{u} $\in$ V(G)}
+		\Let{\textit{u.key}}{$\infty$}
+		\Let{\textit{u.}$\pi$}{\textit{NIL}} 
+		\EndFor
+		\Let{\textit{r.key}}{0}
+		\Let{\textit{Q}}{\textit{V(G)}}
+		\While{\textit{Q} $\neq$ 0}
+		\Let{\textit{u}}{EXTRACT-MIN(\textit{Q})}
+		\For{ogni \textit{v} $\in$ \textit{G.Adj[u]}}
+		\If{$v \in Q$ and $\omega(u,v) < v.key$}
+		\Let{\textit{v.key}}{$\omega(u,v)$}
+		\Let{\textit{v.}$\pi$}{\textit{v}}
+		\EndIf
+		\EndFor
+		\EndWhile
+		\State \Return{}
+		\EndFunction
+	\end{algorithmic}
+\end{algorithm}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.7\textwidth]{immagini/block_on_grid.png}
+	\caption{Esempio del funzionamento dell'algoritmo di Prim}
+	\label{fig:prim_alg}
+\end{figure}
+

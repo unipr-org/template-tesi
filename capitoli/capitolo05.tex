@@ -1,0 +1,127 @@
+% !TeX spellcheck = it_IT
+
+\section{Il modello MPI}
+Una volta definito come partizionare il dominio (capitolo \ref{sec:fourth_sudd_dom}) è necessario predisporre l'ambiente di calcolo per eseguire l'applicativo parallelamente sui vari nodi.\\
+Di seguito si introduce un modello MPI che assegna le diverse partizioni sui vari nodi di calcolo e che gestisce le varie comunicazioni tra i nodi stessi.
+
+\subsection{L'architettura e la distribuzione dei dati}
+Il tipo di architettura hardware pensata per supportare la versione parallelizzata di questo applicativo è un'architettura \textit{MIMD} (figura \ref{fig:mimd}) a memoria distribuita.\\
+In particolare si parla di memoria distribuita in quanto le informazioni della partizione sono note solo al nodo che la contiene e possono essere lette dagli altri solo attraverso uno scambio di messaggi.\\
+Prima che il programma distribuito venga eseguito è quindi necessario assegnare ad ogni nodo le informazioni che gli appartengono e quelle che gli sono utili per eseguire correttamente le comunicazioni con gli altri nodi di calcolo.
+Ogni nodo ha bisogno di conoscere solamente:
+\begin{itemize}
+	\item Quale partizione è assegnata ad ogni nodo di calcolo;
+	\item I dati della mappatura del terreno di ogni blocco contenuto nella propria partizione;
+	\item La lista, identificata dall'array \textit{neigh} (paragrafo \ref{subsubsec:data_types_swe}), di tutti i blocchi con i relativi vicini;
+	\item La partizione (e di conseguenza il nodo) di appartenenza di ogni blocco del dominio.
+\end{itemize}
+
+\subsection{La fase di pre-computazione}
+Nel modello MPI avverrà quindi una fase di pre-computazione che si occuperà di distribuire sui vari nodi tutte le informazioni necessarie.\\
+Come tipicamente avviene nelle strutture di calcolo distribuito, la fase di pre-computazione viene eseguita soltanto su un nodo, d'ora in poi indicato con il termine \emph{root}, che si occupa di calcolare e distribuire le varie informazioni.\\
+In particolare, durante la fase di pre-computazione per la parallelizzazione in un ambiente MPI del programma \textit{sweGPU}, il nodo \textit{root} sarà l'unico a conoscere le informazioni sul domino.
+Nello pseudo-codice \ref{alg:pre_compt_mpi} si descrive la fase di pre-computazione (mostrata in figura \ref{fig:pre_proc_mpi}) eseguita dal nodo \textit{root}, considerando \textit{D} come l'insieme delle informazioni riguardanti il dominio e \textit{par\_id\_to\_node} come una funzione che associa l'id di una partizione al rispettivo nodo.
+\begin{algorithm}[H]
+	\caption{Fase di pre-computazione}
+	\label{alg:pre_compt_mpi}
+	\begin{algorithmic}[1]
+		\Statex
+		\Function{Data\_Distribuition}{program\_data \textit{D}, func \textit{par\_id\_to\_node}}
+		\State{MPI::Init()}
+		\State{\color{blue}{//Invio delle partizioni ai nodi relativi}}
+		\If{\textit{rank} $\equiv$ \textit{root.rank}}
+		\Let{\textit{lists\_partitions}}{MAKE\_PARTITION(\textit{D.domain})}
+		\For{ogni \textit{partition} $\in$ \textit{lists\_partitions}}
+		\Let{\textit{node\_to\_send}}{\textit{par\_id\_to\_node(partition.id)}}
+		\If{\textit{node\_to\_send}$\neq$\textit{root.rank}}
+		\State{MPI\_NON\_BLOCKING\_SEND(\textit{partition}, node\_to\_send)}
+		\State{\textit{add\_to\_list\_block-partition}(partition)}
+		\Else
+		\State{SAVE(\textit{partition})}
+		\EndIf
+		\EndFor
+		\Else
+		\State{MPI\_RECEIVE(\textit{root}, \textit{partition})}
+		\State{SAVE({\textit{partition}})}
+		\EndIf
+		\State{\color{blue}{/*Invio in \textit{broadcast} (paragrafo \ref{subsubsec:coll_comm}) dell'array \textit{neigh} e dell'array}}
+		\State{\color{blue}{\textit{block-partition} che associa ad ogni blocco la propria partizione*/}}
+		\If{\textit{rank} $\equiv$ \textit{root.rank}}
+		\State{MPI\_BROADCAST\_SEND(\textit{D.neigh})}
+		\State{SAVE({\textit{D.neigh}})}
+		\State{MPI\_BROADCAST\_SEND(\textit{block-partition})}
+		\State{SAVE({\textit{block-partition}})}
+		\State{DELETE(\textit{D})}
+		\Else
+		\State{MPI\_BROADCAST\_RECEIVE(\textit{neigh})}
+		\State{SAVE({\textit{neigh}})}
+		\State{MPI\_BROADCAST\_RECEIVE(\textit{block-partition})}
+		\State{SAVE({\textit{block-partition}})}
+		\EndIf
+		\State{MPI::Finalize()}
+		\State \Return{}
+		\EndFunction
+	\end{algorithmic}
+\end{algorithm}
+
+\subsection{Lo scambio dei Dati di esecuzione}
+Finita la fase di pre-computazione, l'applicativo per la simulazione numerica dei flussi può iniziare ad eseguire i vari calcoli parallelamente sui vari nodi.\\
+Come spiegato nel paragrafo \ref{subsec:sweworking}, durante ogni passo di esecuzione del programma ogni cella ha bisogno delle informazioni dei propri vicini nel dominio reale. In particolare può capitare che una cella di bordo richieda informazioni che si trovano su un altro blocco (figura \ref{fig:cella_bordo_comunicazione}) e siccome il dominio è stato distribuito su vari nodi può capitare che il blocco in questione non si trovi sullo stesso nodo di quello che contiene la cella.
+Quando si verifica questa situazione il nodo deve richiedere, tramite protocolli MPI, le informazioni necessarie ai nodi che contengono i vicini.\\
+Ad ogni passo di calcolo i nodi devono scambiare informazioni riguardanti i bordi tra blocchi adiacenti e su nodi diversi. Per sfruttare la banda di trasmissione, conviene accorpare i dati da scambiare tra coppie di nodi in un unico blocco di informazione.\\
+In particolare si accodano tutte le informazioni dei vari bordi da trasmettere. Ciascun nodo ha informazioni sufficienti per sapere quali bordi dovranno essere spediti e ricevuti. In questo modo alla ricezione del blocco di dati, sarà possibile gestire i singoli bordi.\\
+
+Nello pseudo-codice \ref{alg:mpi_exchange} viene descritto il modello MPI di comunicazione tra i nodi durante lo svolgimento del programma \textit{sweGPU}, in cui la funzione \textit{par\_id\_to\_node}, associa l'id di una partizione al rispettivo nodo e il parametro \textit{PRE-DATA} contiene le informazioni derivanti dalla pre-computazione.\\
+Inoltre in questo modello vengono eseguite tutte le \textit{send non bloccanti} prima delle \textit{receive} in modo da poter inviare tutti i dati senza attendere la sincronizzazione tra i nodi.\\
+Uno schema del modello è mostrato in figura \ref{fig:my_mpi_model}.
+\begin{algorithm}[H]
+	\caption{Modello dello scambio di informazioni}
+	\label{alg:mpi_exchange}
+	\begin{algorithmic}[1]
+		\Statex
+		\Function{sweGPU\_MPI}{func \textit{par\_id\_to\_node}, pre\_data \textit{PRE-DATA}}
+		\State{MPI::Init()}
+		\For{ogni passo di computazione del programma \textit{sweGPU}}
+		\State{\color{blue}{//Calcolo dei dati da inviare ad ogni nodo}}
+		\Let{\textit{partition}}{\textit{PRE-DATA.partition}}
+		\For{ogni \textit{block} $\in$ \textit{partition}}
+		\For{ogni \textit{single\_neigh} $\in$ \textit{PRE-DATA.neigh(block)}}
+		\If{\textit{single\_neigh.id\_partition} $\neq$ \textit{partition.id}}
+		\Let{\textit{info\_to\_send}}{\textit{PRE-DATA.block.info}}
+		\Let{\textit{node\_to\_send}}{\textit{par\_id\_to\_node}(\textit{partition.id})}
+		\State{push(\textit{list\_data\_to\_send}(\textit{node\_to\_send}), \textit{info\_to\_send})}
+		\EndIf
+		\EndFor
+		\EndFor
+		\For{ogni altro nodo \textit{node} che ha almeno una comunicazione}
+		\State{MPI\_NON\_BLOCKING\_SEND(\textit{list\_data\_to\_send}(\textit{node}))}
+		\EndFor
+		\For{ogni altro nodo \textit{node} che ha almeno una comunicazione}
+		\State{MPI\_RECEIVE(node ,\textit{list\_data\_to\_receive})}
+		\State{SAVE(\textit{list\_data\_to\_receive})}
+		\EndFor
+		\State{DO\_THE\_REAL\_JOB\_ON\_MY\_PARTITION}
+		\State{\color{blue}{//Le informazioni contenute nei vari blocchi cambiano}}
+		\EndFor
+		\State{MPI::Finalize()}
+		\State \Return{}
+		\EndFunction
+	\end{algorithmic}
+\end{algorithm}
+
+Essendo l'\textit{overhead} per la ricezione dei bordi (riga 15 algoritmo \ref{alg:mpi_exchange}) molto penalizzante, si può pensare di ridurlo introducendo la possibilità di eseguire il calcolo durante il tempo di ricezione per i blocchi che non dipendono dai dati attesi .
+\begin{figure}[H]
+\begin{subfigure}{0.5\textwidth}
+	\centering
+    \includegraphics[width=1.0\textwidth]{Immagini/broadcast_procedure.png}
+    \caption{Schema delle comunicazioni nella fase di pre-computazione}
+	\label{fig:pre_proc_mpi}
+\end{subfigure}%
+\begin{subfigure}{0.5\textwidth}
+	\centering
+	\includegraphics[width=1.0\textwidth]{Immagini/communication_model.png}
+	\caption{Schema delle comunicazioni del modello di scambio informazioni}
+	\label{fig:my_mpi_model}
+\end{subfigure}
+\caption{La rappresentazione del modello MPI}
+\end{figure}
