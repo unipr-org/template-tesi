@@ -205,7 +205,10 @@
       }%
       {}%
       }%
-      {}
+      {%
+        {{\large \raggedleft \textsc{} \par}}
+        {\large \raggedleft \nameStyle{\@serialNumber} \hfill {} \par}%
+      }%
     \vfill
     {\noindent\rule{\textwidth}{0.4pt}\par}
     \begin{center}
